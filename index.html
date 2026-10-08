@@ -302,7 +302,7 @@
   <div class="box glass">
     <h2>Podaci biblioteke</h2>
     <p>Nalepi md tabelu iz Bear beleške (ili celu belešku — uzimaju se samo redovi tabele).
-       Najbrže: Shortcut otvara ovu stranu sa <code>#&lt;base64&gt;</code> u adresi.</p>
+       Bez nalepljene tabele stranica prikazuje <code>biblioteka.md</code> sa sajta.</p>
     <textarea id="mdInput" spellcheck="false" placeholder="| Autor | Naslov | Serijal | # | Žanr | Čiji | Pročitano | Box | Str | Format | Boja |"></textarea>
     <div class="actions">
       <button id="btnCopyLink" class="sbtn">Kopiraj link sa podacima</button>
@@ -495,22 +495,33 @@ function bookColor(b, r) {
 /* ============================================================
    Učitavanje podataka (hash Base64 / textarea / localStorage)
    ============================================================ */
-function decodeHash(h) {
+// Hash formati: `#<base64>` (Shortcut), `#gz:<base64url>` (gzip — ~3,5× kraće), ili sirov md.
+async function decodeHash(h) {
   if (!h) return null;
   let s = h;
   try { s = decodeURIComponent(s); } catch { /* ostavi */ }
   if (s.includes('|')) return s; // sirov md u hash-u
+  const gz = s.startsWith('gz:');
+  if (gz) s = s.slice(3);
   s = s.replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/');
   while (s.length % 4) s += '=';
-  const bin = atob(s);
-  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-  return new TextDecoder('utf-8').decode(bytes);
+  const bytes = Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  if (!gz) return new TextDecoder('utf-8').decode(bytes);
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Response(stream).text();
 }
-function encodeBase64(text) {
-  const bytes = new TextEncoder().encode(text);
+function bytesToBase64(bytes) {
   let bin = '';
   for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(bin);
+}
+// za link: samo redovi tabele, gzip, base64url bez „="
+async function encodeHash(md) {
+  const table = md.split(/\r?\n/).filter((l) => l.trim().startsWith('|')).join('\n');
+  if (typeof CompressionStream === 'undefined') return bytesToBase64(new TextEncoder().encode(table));
+  const stream = new Blob([table]).stream().pipeThrough(new CompressionStream('gzip'));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  return 'gz:' + bytesToBase64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 const store = {
   get() { try { return localStorage.getItem(STORAGE_KEY); } catch { return null; } },
@@ -1303,14 +1314,19 @@ function showImport(cancelable) {
 $('btnMore').addEventListener('click', () => { closePanels(); showImport(!!books.length); });
 $('btnImportCancel').addEventListener('click', () => $('import').classList.add('hidden'));
 $('mdInput').addEventListener('input', () => $('btnCopyLink').classList.toggle('hidden', !$('mdInput').value));
-$('btnImport').addEventListener('click', () => {
+$('btnImport').addEventListener('click', async () => {
   const md = $('mdInput').value;
   if (!load(md)) return;
-  history.replaceState(null, '', '#' + encodeBase64(md));
+  // ista tabela kao na sajtu → kratak link bez #
+  const same = siteMd !== null && md.trim() === siteMd.trim();
+  history.replaceState(null, '', same ? location.pathname : '#' + await encodeHash(md));
   $('import').classList.add('hidden');
 });
 $('btnCopyLink').addEventListener('click', async () => {
-  const url = location.origin + location.pathname + '#' + encodeBase64($('mdInput').value);
+  const md = $('mdInput').value;
+  const base = location.origin + location.pathname;
+  const same = siteMd !== null && md.trim() === siteMd.trim();
+  const url = same ? base : base + '#' + await encodeHash(md);
   try { await navigator.clipboard.writeText(url); toast('Link je kopiran.'); }
   catch { prompt('Kopiraj link:', url); }
 });
@@ -1339,18 +1355,36 @@ function load(md) {
   return true;
 }
 
-function loadFromHash() {
+async function loadFromHash() {
   const h = location.hash.slice(1);
   if (!h) return false;
   try {
-    return load(decodeHash(h));
+    return load(await decodeHash(h));
   } catch (err) {
     console.error(err);
-    toast('Podaci u adresi (#…) nisu ispravan Base64.');
+    toast('Podaci u adresi (#…) nisu ispravni.');
     return false;
   }
 }
-window.addEventListener('hashchange', () => { if (loadFromHash()) $('import').classList.add('hidden'); });
+// tabela objavljena uz stranicu (biblioteka.md pored index.html) — kratak stalni link
+let siteMd = null;
+async function loadFromSite() {
+  try {
+    const r = await fetch('biblioteka.md', { cache: 'no-cache' });
+    if (!r.ok) return false;
+    const md = await r.text();
+    if (!parseMd(md).length) return false;
+    siteMd = md;
+    return load(md);
+  } catch {
+    return false;
+  }
+}
+async function loadData() {
+  if (await loadFromHash()) return true;
+  return loadFromSite();
+}
+window.addEventListener('hashchange', async () => { if (await loadData()) $('import').classList.add('hidden'); });
 
 /* ============================================================
    Start
@@ -1362,8 +1396,8 @@ window.addEventListener('hashchange', () => { if (loadFromHash()) $('import').cl
 applyTheme();
 resetCamera(true);
 $('loading').remove();
-if (!loadFromHash()) showImport(false);
 requestAnimationFrame(tick);
+loadData().then((ok) => { if (!ok) showImport(false); });
 </script>
 </body>
 </html>
