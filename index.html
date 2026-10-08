@@ -1,0 +1,1369 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Biblioteka</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='5' width='6' height='23' fill='%238a5a2b'/%3E%3Crect x='11' y='8' width='5' height='20' fill='%232c4f86'/%3E%3Crect x='18' y='6' width='5' height='22' fill='%23a3242a'/%3E%3Crect x='24' y='9' width='5' height='19' fill='%232f6a47' transform='rotate(-8 26 28)'/%3E%3C/svg%3E">
+<style>
+  /* Podrazumevano: Breskva (FFDCCC zid · FCB1A6 pod · FFF9EC traka · 5D2A42 tekst · FB6376 akcenat).
+     Polica i knjige se ne menjaju sa paletom. */
+  :root {
+    --r: 3px; /* zaobljenost uglova (0 = oštri) */
+    --bg: #ffdccc;
+    --floor: #fcb1a6;
+    --panel: rgba(255, 249, 236, 0.95);
+    --panel-solid: #fff9ec;
+    --border: rgba(93, 42, 66, 0.13);
+    --text: #5d2a42;
+    --muted: #8a5c6f;
+    --accent: #fb6376;
+    --accent-soft: rgba(251, 99, 118, 0.15);
+    --warn: #b0602a;
+    --shadow: 0 6px 24px rgba(93, 42, 66, 0.16);
+  }
+
+  /* ISKLJUČENO — druge palete boja (za kasnije probe). Da se vrate: odkomentarisati ovaj blok,
+     .pal stilove, meni „more" u HTML-u i blok „Palete boja" u skripti.
+  Paleta: 97BEC6 magla · 034C5F petrolej · EE6457 korala · F9C4BA rumen · FDF5F4 porcelan
+  :root[data-palette] {
+    --panel: rgba(253, 245, 244, 0.95); --panel-solid: #fdf5f4;
+    --text: #034c5f; --muted: #4f7a86; --border: rgba(3, 76, 95, 0.13);
+    --accent: #ee6457; --accent-soft: rgba(238, 100, 87, 0.14);
+    --shadow: 0 6px 24px rgba(3, 76, 95, 0.16);
+  }
+  :root[data-palette="porcelan"] {
+    --bg: #fdf5f4; --floor: #97bec6;
+    --panel: rgba(249, 196, 186, 0.95); --panel-solid: #f9c4ba;
+    --muted: #3f6c78; --border: rgba(3, 76, 95, 0.14);
+    --accent: #034c5f; --accent-soft: rgba(3, 76, 95, 0.12);
+  }
+  :root[data-palette="rumen"]  { --bg: #f9c4ba; --floor: #ee6457; --accent: #034c5f; --accent-soft: rgba(3, 76, 95, 0.12); }
+  :root[data-palette="magla"]  { --bg: #97bec6; --floor: #034c5f; }
+  :root[data-palette="dubina"] { --bg: #034c5f; --floor: #023947; }
+  :root[data-palette="koral"]  { --bg: #ee6457; --floor: #034c5f; --accent: #034c5f; --accent-soft: rgba(3, 76, 95, 0.12); }
+  Sunce: FFCB77 zid · FE6D73 pod · FEF9EF traka · 227C9D akcenat (iz ranije palete)
+  :root[data-palette="sunce"] {
+    --bg: #ffcb77; --floor: #fe6d73;
+    --panel: rgba(254, 249, 239, 0.95); --panel-solid: #fef9ef;
+    --text: #1d3b47; --muted: #5a7a86; --border: rgba(29, 59, 71, 0.13);
+    --accent: #227c9d; --accent-soft: rgba(34, 124, 157, 0.14);
+    --shadow: 0 6px 24px rgba(29, 59, 71, 0.16);
+  }
+  */
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: fixed; inset: 0; touch-action: none; }
+  #scene canvas { display: block; outline: none; }
+
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .hidden { display: none !important; }
+
+  /* Gornja traka — jedna tanka traka */
+  #topbar {
+    position: fixed; z-index: 10;
+    top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+    width: min(520px, calc(100vw - 20px));
+    display: flex; align-items: center; gap: 2px; padding: 4px;
+  }
+  .glass {
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    box-shadow: var(--shadow);
+  }
+  #searchWrap { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 10px; }
+  #searchWrap svg { flex: none; opacity: 0.45; }
+  #search {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text);
+    font-size: 16px; padding: 6px 0; outline: none;
+  }
+  #search::placeholder { color: var(--muted); }
+  #stats { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  #searchClear { border: 0; background: none; padding: 2px 4px; color: var(--muted); font-size: 12px; }
+  .sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; flex: none; }
+  .ibtn {
+    position: relative; flex: none; width: 34px; height: 34px; border-radius: var(--r);
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 0; background: none; color: var(--muted);
+  }
+  .ibtn:hover { background: var(--accent-soft); color: var(--text); }
+  .ibtn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+  .dot {
+    position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+  }
+  .count {
+    position: absolute; top: 1px; right: 0; min-width: 15px; height: 15px; padding: 0 4px; border-radius: var(--r);
+    background: var(--accent); color: var(--panel-solid);
+    font-size: 10px; font-weight: 700; line-height: 15px; text-align: center; font-variant-numeric: tabular-nums;
+  }
+
+  /* Paneli — ispod trake, desno poravnati */
+  .side {
+    position: fixed; z-index: 9;
+    top: calc(max(10px, env(safe-area-inset-top)) + 52px);
+    left: 50%; transform: translateX(calc(min(520px, 100vw - 20px) / 2 - 100%));
+    width: 300px; max-width: calc(100vw - 20px);
+    max-height: calc(100dvh - 80px);
+    overflow: auto; padding: 12px 14px 14px;
+  }
+  .side h3 { margin: 0 0 6px; font-size: 13px; color: var(--text); font-weight: 700; }
+  .side section + section { margin-top: 14px; }
+  .seg { display: flex; gap: 2px; }
+  .seg button {
+    flex: 1; border: 0; background: none; padding: 5px 4px; font-size: 13px; border-radius: var(--r); color: var(--muted);
+  }
+  .seg button:hover { color: var(--text); }
+  .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip {
+    border: 0; background: none; border-radius: var(--r); padding: 4px 8px; font-size: 13px; color: var(--text);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .chip i { width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 28%, transparent); }
+  .chip:hover { background: var(--accent-soft); }
+  .chip span { color: var(--muted); font-size: 11px; margin-left: 2px; }
+  .chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  /* ISKLJUČENO — stilovi menija za izbor boja
+  .palettes { display: flex; flex-direction: column; gap: 2px; }
+  .pal {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    border: 0; background: none; padding: 6px 8px; border-radius: var(--r); font-size: 13px;
+  }
+  .pal:hover { background: var(--accent-soft); }
+  .pal[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .pal .sw { display: flex; }
+  .pal .sw i { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border); margin-right: -4px; }
+  .menuitem {
+    display: block; width: 100%; text-align: left; border: 0; background: none;
+    padding: 6px 8px; border-radius: var(--r); font-size: 13px;
+  }
+  .menuitem:hover { background: var(--accent-soft); }
+  */
+  .linkbtn { border: 0; background: none; color: var(--accent); padding: 0; font-size: 12px; }
+  .row-between { display: flex; justify-content: space-between; align-items: baseline; }
+
+  #unplacedList { list-style: none; margin: 0; padding: 0; }
+  #unplacedList li {
+    padding: 8px 6px; border-bottom: 1px solid var(--border); cursor: pointer; border-radius: var(--r);
+  }
+  #unplacedList li:hover { background: var(--accent-soft); }
+  #unplacedList li.dim { opacity: 0.35; }
+  #unplacedList .t { font-weight: 600; }
+  #unplacedList .a, #unplacedList .n { color: var(--muted); font-size: 12px; }
+  #unplacedList .n { color: var(--warn); }
+  .empty { color: var(--muted); font-size: 13px; }
+
+  /* Kartica knjige */
+  #card {
+    position: fixed; z-index: 11;
+    right: max(10px, env(safe-area-inset-right));
+    top: calc(max(10px, env(safe-area-inset-top)) + 52px);
+    width: 320px; max-width: calc(100vw - 20px); max-height: calc(100dvh - 90px); overflow: auto;
+    padding: 16px 16px 12px;
+  }
+  #card .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+  #card h2 { margin: 0 28px 2px 0; font-size: 17px; line-height: 1.3; font-weight: 600; }
+  #card .author { color: var(--muted); margin-bottom: 12px; }
+  #card dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+  #card dt { color: var(--muted); font-size: 13px; }
+  #card dd { margin: 0; }
+  #card .q { color: var(--warn); }
+  #card .q::after { content: " · proveriti"; font-size: 11px; }
+  #cardClose { position: absolute; top: 10px; right: 10px; border: 0; background: none; padding: 6px; color: var(--muted); }
+
+  /* Uvoz podataka */
+  #import {
+    position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+    padding: max(16px, env(safe-area-inset-top)) 16px 16px;
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+  }
+  #import .box { width: 640px; max-width: 100%; max-height: 100%; display: flex; flex-direction: column; padding: 18px; gap: 10px; }
+  #import h2 { margin: 0; font-size: 18px; }
+  #import p { margin: 0; color: var(--muted); }
+  #import textarea {
+    width: 100%; min-height: 240px; flex: 1; resize: vertical;
+    font: 12px/1.45 ui-monospace, Menlo, monospace; color: var(--text);
+    background: var(--panel-solid); border: 1px solid var(--border); border-radius: var(--r); padding: 10px;
+  }
+  #import .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .pbtn { border: 0; background: var(--accent); color: var(--panel-solid); padding: 9px 16px; border-radius: var(--r); font-weight: 600; }
+  .sbtn { border: 1px solid var(--border); background: none; padding: 9px 14px; border-radius: var(--r); }
+
+  #toast {
+    position: fixed; z-index: 30; left: 50%; transform: translateX(-50%);
+    bottom: max(16px, env(safe-area-inset-bottom)); max-width: calc(100vw - 32px);
+    padding: 10px 14px; font-size: 13px;
+  }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+
+  @media (max-width: 720px) {
+    .side { left: 10px; right: 10px; width: auto; transform: none; }
+    #card {
+      top: auto; bottom: max(10px, env(safe-area-inset-bottom)); left: 10px; right: 10px; width: auto; max-width: none;
+      max-height: 55dvh;
+    }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="scene"></div>
+<div id="loading">Učitavam…</div>
+
+<header id="topbar" class="glass hidden">
+  <label id="searchWrap">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="search" type="text" enterkeyhint="search" placeholder="Traži" autocomplete="off" autocorrect="off" spellcheck="false">
+    <button id="searchClear" class="hidden" aria-label="Obriši pretragu">✕</button>
+    <span id="stats" title="Broj knjiga"></span>
+  </label>
+  <span class="sep"></span>
+  <button id="btnFilters" class="ibtn" aria-pressed="false" title="Filteri" aria-label="Filteri">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+    <span id="filterBadge" class="count hidden"></span>
+  </button>
+  <button id="btnUnplaced" class="ibtn hidden" aria-pressed="false" title="Nesmeštene knjige" aria-label="Nesmeštene knjige">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 4v16"/></svg>
+    <span class="dot"></span>
+  </button>
+  <button id="btnReset" class="ibtn" title="Resetuj kameru (strelice: pomeranje, +/−: zum, Shift: brže)" aria-label="Resetuj kameru">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg>
+  </button>
+  <button id="btnMore" class="ibtn" title="Podaci" aria-label="Podaci">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+  </button>
+</header>
+
+<aside id="filters" class="side glass hidden">
+  <section>
+    <h3>Čije</h3>
+    <div class="seg" data-filter="owner">
+      <button data-v="sve" aria-pressed="true">Sve</button>
+      <button data-v="S" aria-pressed="false">Srđan</button>
+      <button data-v="N" aria-pressed="false">Katarina</button>
+    </div>
+  </section>
+  <section>
+    <h3>Pročitano</h3>
+    <div class="seg" data-filter="read">
+      <button data-v="sve" aria-pressed="true">Sve</button>
+      <button data-v="da" aria-pressed="false">Da</button>
+      <button data-v="ne" aria-pressed="false">Ne</button>
+      <button data-v="nep" aria-pressed="false" title="Polje Pročitano nije popunjeno">Nepoznato</button>
+    </div>
+  </section>
+  <section>
+    <div class="row-between"><h3>Žanr</h3><button id="genreClear" class="linkbtn hidden">poništi</button></div>
+    <div id="genreChips" class="chips"></div>
+  </section>
+</aside>
+
+<!-- ISKLJUČENO — meni sa izborom boja (⋯ sada direktno otvara Podaci)
+<aside id="more" class="side glass hidden">
+  <section>
+    <h3>Boje</h3>
+    <div id="palettes" class="palettes"></div>
+  </section>
+  <section>
+    <button id="btnData" class="menuitem">Podaci…</button>
+  </section>
+</aside>
+-->
+
+<aside id="unplaced" class="side glass hidden">
+  <h3>Nesmeštene knjige</h3>
+  <ul id="unplacedList"></ul>
+</aside>
+
+<article id="card" class="glass hidden" aria-live="polite">
+  <button id="cardClose" aria-label="Zatvori">✕</button>
+  <div id="cardBody"></div>
+</article>
+
+<div id="import" class="hidden">
+  <div class="box glass">
+    <h2>Podaci biblioteke</h2>
+    <p>Nalepi md tabelu iz Bear beleške (ili celu belešku — uzimaju se samo redovi tabele).
+       Najbrže: Shortcut otvara ovu stranu sa <code>#&lt;base64&gt;</code> u adresi.</p>
+    <textarea id="mdInput" spellcheck="false" placeholder="| Autor | Naslov | Serijal | # | Žanr | Čiji | Pročitano | Box | Str | Format | Boja |"></textarea>
+    <div class="actions">
+      <button id="btnCopyLink" class="sbtn">Kopiraj link sa podacima</button>
+      <button id="btnImportCancel" class="sbtn">Otkaži</button>
+      <button id="btnImport" class="pbtn">Prikaži policu</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="glass hidden"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ============================================================
+   Podešavanja (sve mere u cm)
+   ============================================================ */
+const CFG = {
+  BOX_W: 43.5,    // unutrašnja širina boxa
+  BOX_H: 23,      // unutrašnja visina, redovi 1–5
+  BOX_H6: 31.5,   // unutrašnja visina, red 6 (donji, viši)
+  DEPTH: 24.2,    // dubina okvira
+  RECESS: 1,      // police (23,2 cm) su spreda uvučene u odnosu na okvir
+  PANEL: 1.8,     // debljina ploča
+  BACK: 0.4,      // leđa
+  PPC: 26,        // px po cm za teksturu hrpta
+};
+const FORMATS = {
+  'dž': { h: 18,   d: 11, t: 1.5, hj: 0.6 },
+  std:  { h: 20.5, d: 14, t: 2.3, hj: 0.7 },
+  vel:  { h: 27,   d: 20, t: 2.0, hj: 1.6 },
+};
+const CM_PER_PAGE = 3.55 / 705; // izmereno: Oklopno srce, 705 str = 3,85 cm
+const COVER_CM = 0.3;
+const PAGES_COLOR = '#efe6d1';
+const COLS = ['L', 'S', 'D'];
+const DECOR = new Set(['1-L', '2-L', '3-L']);
+const STORAGE_KEY = 'biblioteka.md';
+
+const OWNER_LABEL = { S: 'Srđan', N: 'Katarina', oba: 'zajednička' };
+
+const NAMED_COLORS = {
+  plava: '#2c4f86', tamnoplava: '#1d2f52', svetloplava: '#7fa7d4', crna: '#1b1b1d', bela: '#ebe6da',
+  roze: '#e3a1b5', zelena: '#2f6a47', narandžasta: '#d8742a', žuta: '#e2bf3f', crvena: '#a3242a',
+  ljubičasta: '#5b3b7c', tirkizna: '#2a9a98', bordo: '#6a1b2b', siva: '#7c7f84', braon: '#6b4528',
+  bež: '#d8c7a3', zlatna: '#c9a24a', srebrna: '#b9bcc2', teget: '#1b2a4a', maslinasta: '#6b6b2f',
+};
+const GENRE_PALETTE = {
+  'krimi': ['#1f2a38', '#2e3440', '#3b2f2f', '#14213d', '#4a4e57', '#5a1f1f'],
+  'triler': ['#2b0f12', '#1c1c1c', '#5c1a1b', '#3a3a3a', '#7a1e1e'],
+  'sf': ['#0f2a44', '#173f5f', '#20639b', '#1b4d4d', '#2c2c54', '#474787'],
+  'fantastika': ['#2d1e3e', '#3c2a1e', '#1e3b2c', '#5a3e1b', '#402030'],
+  'beletristika': ['#c9b79c', '#8fb3a8', '#d4a5a5', '#9aa5c4', '#e1c78f', '#a7c4a0', '#c4a7c9'],
+  'domaći': ['#8c2f1f', '#b5651d', '#6e3b1e', '#a3443a', '#c08a3e'],
+  'istorijski roman': ['#5b3a1e', '#7a4b22', '#3d2b1f'],
+  'biografija': ['#e8e4da', '#2b2b2b', '#3e5c76', '#c8a24a'],
+  'biografski roman': ['#b85c38', '#c79a6b', '#8e5a7a'],
+  'istorija': ['#4a3b2a', '#6b5135', '#2d2a26', '#7a2f2f'],
+  'istorija/true crime': ['#6e1f1f', '#2b2b2b', '#3a2f28'],
+  'psihologija': ['#5a7d9a', '#8a6f9e', '#c98b6b', '#4f7c6b'],
+  'self-help': ['#f0b429', '#e86f3a', '#3bb7a0', '#f2f2ee'],
+  'roditeljstvo': ['#f2c4ce', '#a9d6e5', '#f7e1a1', '#c3e2c2'],
+  'deca': ['#f4a259', '#5bc0eb', '#9bc53d', '#e55934', '#fde74c'],
+  'putovanja': ['#2a9d8f', '#e9c46a', '#264653', '#f4a261'],
+  'kuvar': ['#e76f51', '#f4a261', '#90be6d', '#f9f7f3'],
+  'stručno': ['#e9ecef', '#264653', '#1d3557'],
+  'zabava': ['#ffbe0b', '#fb5607', '#3a86ff'],
+  'ilustrovana': ['#14213d', '#fca311', '#e5e5e5'],
+  'domaći/krimi': ['#3a1f1f', '#1f2a38', '#5c2a1a', '#2b2b2b'],
+  'domaći/poezija': ['#d8c3a5', '#8e8d8a', '#e98074'],
+};
+const DEFAULT_PALETTE = ['#8d8d8d', '#6c757d', '#a39e93'];
+
+/* ============================================================
+   Pomoćne funkcije
+   ============================================================ */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const isUnsure = (s) => typeof s === 'string' && s.includes('?');
+const clean = (s) => (s || '').replace(/\s*\?\s*$/, '').trim();
+// žanr za prikaz: veliko početno slovo, „sf" uvek „SF" (u tabeli ostaje malim slovima)
+const genreLabel = (g) => (g || '').replace(/\bsf\b/gi, 'SF').replace(/^\p{Ll}/u, (c) => c.toUpperCase());
+
+function hashStr(s) {
+  let h = 2166136261 >>> 0;
+  for (const ch of s) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function rng(seed) {
+  return () => {
+    seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function norm(s) {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd').replace(/dj/g, 'd');
+}
+function luminance(color) {
+  const c = new THREE.Color(color);
+  return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; // linear
+}
+
+/* ============================================================
+   Parser md tabele
+   ============================================================ */
+const KEYS = ['autor', 'naslov', 'serijal', 'broj', 'zanr', 'ciji', 'procitano', 'box', 'str', 'format', 'boja'];
+const HEADER_KEYS = {
+  'autor': 'autor', 'naslov': 'naslov', 'serijal': 'serijal', '#': 'broj', 'žanr': 'zanr', 'čiji': 'ciji',
+  'pročitano': 'procitano', 'box': 'box', 'str': 'str', 'format': 'format', 'boja': 'boja',
+};
+
+function splitRow(line) {
+  let s = line.trim();
+  if (s.startsWith('|')) s = s.slice(1);
+  if (s.endsWith('|')) s = s.slice(0, -1);
+  return s.split('|').map((c) => c.trim());
+}
+
+function parseMd(text) {
+  const books = [];
+  let map = null;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line.startsWith('|')) continue;
+    const cells = splitRow(line);
+    if (cells.every((c) => c === '' || /^:?-{2,}:?$/.test(c))) continue;
+    const low = cells.map((c) => c.toLowerCase());
+    if (low.includes('autor') && low.includes('naslov')) {
+      map = low.map((c) => HEADER_KEYS[c] || null);
+      continue;
+    }
+    const o = {};
+    (map || KEYS).forEach((k, i) => { if (k) o[k] = cells[i] ?? ''; });
+    if (!o.naslov && !o.autor) continue;
+    books.push(makeBook(o, books.length));
+  }
+  return books;
+}
+
+function makeBook(o, index) {
+  const b = {
+    index,
+    autor: o.autor || '', naslov: o.naslov || '', serijal: o.serijal || '', broj: o.broj || '',
+    zanr: (o.zanr || '').trim(), ciji: o.ciji || '', procitano: (o.procitano || '').toLowerCase(),
+    box: (o.box || '').replace(/\s/g, '').toUpperCase(), str: o.str || '', format: o.format || '', boja: o.boja || '',
+  };
+  b.seed = hashStr(b.autor + '|' + b.naslov + '|' + index);
+  const r = rng(b.seed);
+
+  let f = norm(b.format).replace('?', '').trim();
+  b.fmt = f === 'dz' ? 'dž' : (FORMATS[f] ? f : 'std');
+  const F = FORMATS[b.fmt];
+  b.pages = parseInt(b.str, 10) || null;
+  b.t = b.pages ? Math.max(0.6, b.pages * CM_PER_PAGE + COVER_CM) : F.t;
+  b.h = F.h + (r() - 0.5) * F.hj * 2;
+  b.d = F.d + (r() - 0.5) * 1.2;
+
+  const m = /^([1-6])-([LSD])(\*)?$/.exec(b.box);
+  b.placed = false;
+  b.boxNote = '';
+  if (!b.box) b.boxNote = 'još nije smeštena';
+  else if (!m) b.boxNote = `nevažeći box „${b.box}"`;
+  else {
+    b.row = +m[1]; b.col = m[2]; b.lying = !!m[3];
+    b.boxId = `${b.row}-${b.col}`;
+    if (DECOR.has(b.boxId)) b.boxNote = `${b.boxId} je dekoracija, nije za knjige`;
+    else b.placed = true;
+  }
+  b.color = bookColor(b, r);
+  b.searchText = norm([b.autor, b.naslov, b.serijal].join(' '));
+  return b;
+}
+
+function bookColor(b, r) {
+  const raw = norm(clean(b.boja)).split(/[\s,/]+/)[0];
+  if (/^#[0-9a-f]{3,6}$/i.test(b.boja.trim())) return b.boja.trim();
+  for (const [name, hex] of Object.entries(NAMED_COLORS)) if (norm(name) === raw) return hex;
+  const pal = GENRE_PALETTE[b.zanr] || GENRE_PALETTE[b.zanr.split('/')[0]] || DEFAULT_PALETTE;
+  const c = new THREE.Color(pal[Math.floor(r() * pal.length)]);
+  const hsl = {}; c.getHSL(hsl);
+  c.setHSL((hsl.h + (r() - 0.5) * 0.03 + 1) % 1, THREE.MathUtils.clamp(hsl.s + (r() - 0.5) * 0.1, 0, 1),
+    THREE.MathUtils.clamp(hsl.l + (r() - 0.5) * 0.08, 0.04, 0.95));
+  return '#' + c.getHexString();
+}
+
+/* ============================================================
+   Učitavanje podataka (hash Base64 / textarea / localStorage)
+   ============================================================ */
+function decodeHash(h) {
+  if (!h) return null;
+  let s = h;
+  try { s = decodeURIComponent(s); } catch { /* ostavi */ }
+  if (s.includes('|')) return s; // sirov md u hash-u
+  s = s.replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  return new TextDecoder('utf-8').decode(bytes);
+}
+function encodeBase64(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+const store = {
+  get() { try { return localStorage.getItem(STORAGE_KEY); } catch { return null; } },
+  set(v) { try { localStorage.setItem(STORAGE_KEY, v); } catch { /* privatni režim */ } },
+};
+
+/* ============================================================
+   Three.js scena
+   ============================================================ */
+const container = $('scene');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+container.appendChild(renderer.domElement);
+const maxAniso = renderer.capabilities.getMaxAnisotropy();
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 1, 5000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.09;
+controls.screenSpacePanning = true;
+controls.zoomToCursor = true;
+controls.minDistance = 25;
+controls.maxDistance = 900;
+// polica se gleda spreda: ograničena rotacija
+const deg = THREE.MathUtils.degToRad;
+controls.minPolarAngle = deg(90 - 30); // do 30° odozgo
+controls.maxPolarAngle = deg(90 + 20); // do 20° odozdo
+controls.minAzimuthAngle = deg(-35);   // levo/desno do 35°
+controls.maxAzimuthAngle = deg(35);
+
+// Dimenzije police
+const P = CFG.PANEL, W = CFG.BOX_W, D = CFG.DEPTH;
+const TOTAL_W = 3 * W + 4 * P;
+const FRONT = D / 2 - CFG.RECESS; // prednja ivica polica
+const TOTAL_H = 5 * CFG.BOX_H + CFG.BOX_H6 + 7 * P;
+const CENTER = new THREE.Vector3(0, TOTAL_H / 2, 0);
+
+function boxInterior(row, col) {
+  const c = COLS.indexOf(col);
+  const x0 = -TOTAL_W / 2 + P + c * (W + P);
+  const y0 = row === 6 ? P : P + CFG.BOX_H6 + P + (5 - row) * (CFG.BOX_H + P);
+  const h = row === 6 ? CFG.BOX_H6 : CFG.BOX_H;
+  return { x0, y0, w: W, h };
+}
+
+// Svetla
+const hemi = new THREE.HemisphereLight(0xfff6ea, 0x3a3530, 0.85);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff1dc, 2.0);
+sun.position.set(70, TOTAL_H + 220, 260);
+sun.target.position.copy(CENTER);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -170, right: 170, top: 170, bottom: -170, near: 50, far: 900 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.08;
+sun.shadow.radius = 4;
+scene.add(sun, sun.target);
+const fill = new THREE.DirectionalLight(0xe8eeff, 0.55);
+fill.position.set(-120, TOTAL_H * 0.5, 400);
+scene.add(fill);
+
+// Pod i zid
+const floorMat = new THREE.MeshStandardMaterial({ roughness: 0.95 });
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+const wallMat = new THREE.MeshStandardMaterial({ roughness: 1 });
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(3000, 1500), wallMat);
+wall.position.set(0, 750, -D / 2 - 0.6);
+wall.receiveShadow = true;
+scene.add(wall);
+
+function applyTheme() {
+  const css = getComputedStyle(document.documentElement);
+  const bg = new THREE.Color(css.getPropertyValue('--bg').trim());
+  const fl = new THREE.Color(css.getPropertyValue('--floor').trim());
+  scene.background = bg;
+  wallMat.color.copy(bg);
+  floorMat.color.copy(fl);
+  // deo boje kao „sopstveno svetlo" — da zid/pod izgledaju kao izabrana boja, a senke ostanu
+  wallMat.emissive.copy(bg).multiplyScalar(0.4);
+  floorMat.emissive.copy(fl).multiplyScalar(0.25);
+  renderNow();
+}
+
+// Hrast tekstura za leđa
+function oakTexture() {
+  const cv = document.createElement('canvas');
+  cv.width = 1024; cv.height = 1024;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#c29a68';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  const r = rng(42);
+  for (let i = 0; i < 260; i++) {
+    const y = r() * cv.height;
+    const amp = 2 + r() * 10, freq = 0.002 + r() * 0.01, phase = r() * 10;
+    ctx.strokeStyle = r() < 0.5 ? `rgba(110,70,35,${0.08 + r() * 0.22})` : `rgba(230,190,140,${0.05 + r() * 0.15})`;
+    ctx.lineWidth = 0.5 + r() * 2.5;
+    ctx.beginPath();
+    for (let x = 0; x <= cv.width; x += 8) {
+      const yy = y + Math.sin(x * freq + phase) * amp + Math.sin(x * freq * 3.1 + phase) * amp * 0.3;
+      x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
+    }
+    ctx.stroke();
+  }
+  // čvorovi
+  for (let i = 0; i < 6; i++) {
+    const x = r() * cv.width, y = r() * cv.height;
+    const g = ctx.createRadialGradient(x, y, 1, x, y, 14 + r() * 12);
+    g.addColorStop(0, 'rgba(90,55,25,0.55)'); g.addColorStop(1, 'rgba(90,55,25,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(x, y, 40, 10, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = maxAniso;
+  return tex;
+}
+
+// Polica (statična — gradi se jednom)
+function buildShelf() {
+  const g = new THREE.Group();
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x3a3b3f, roughness: 0.55, metalness: 0.05 });
+  const add = (w, h, d, x, y, z, mat = frameMat) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x, y, z);
+    m.castShadow = true; m.receiveShadow = true;
+    g.add(m);
+    return m;
+  };
+  // horizontalne ploče
+  const ys = [P / 2, P + CFG.BOX_H6 + P / 2];
+  for (let i = 1; i <= 5; i++) ys.push(ys[ys.length - 1] + CFG.BOX_H + P);
+  // gornja i donja ploča su deo okvira (pune dubine), unutrašnje police su uvučene
+  ys.forEach((y, i) => {
+    const inner = i > 0 && i < ys.length - 1;
+    add(TOTAL_W, P, inner ? D - CFG.RECESS : D, 0, y, inner ? -CFG.RECESS / 2 : 0);
+  });
+  // vertikalne ploče
+  for (let i = 0; i < 4; i++) add(P, TOTAL_H, D, -TOTAL_W / 2 + P / 2 + i * (W + P), TOTAL_H / 2, 0);
+  // leđa (hrast)
+  const oak = oakTexture();
+  oak.repeat.set(TOTAL_W / 120, TOTAL_H / 120);
+  const backMat = new THREE.MeshStandardMaterial({ map: oak, roughness: 0.8 });
+  add(TOTAL_W - 0.2, TOTAL_H - 0.2, CFG.BACK, 0, TOTAL_H / 2, -D / 2 + CFG.BACK / 2, backMat);
+
+  // oznake boxova na prednjoj ivici donje ploče
+  for (let row = 1; row <= 6; row++) for (const col of COLS) {
+    const id = `${row}-${col}`;
+    if (DECOR.has(id)) continue;
+    const { x0, y0 } = boxInterior(row, col);
+    const cv = document.createElement('canvas');
+    cv.width = 128; cv.height = 48;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = 'rgba(210,210,215,0.85)';
+    ctx.font = '600 34px system-ui, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(id, 4, 26);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const lbl = new THREE.Mesh(new THREE.PlaneGeometry(4.27, 1.6),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+    lbl.position.set(x0 + 0.8 + 4.27 / 2, y0 - P / 2, (row === 6 ? D / 2 : FRONT) + 0.02);
+    g.add(lbl);
+  }
+  return g;
+}
+scene.add(buildShelf());
+
+/* ============================================================
+   Knjige
+   ============================================================ */
+const pagesMat = new THREE.MeshStandardMaterial({ color: PAGES_COLOR, roughness: 0.95 });
+const pagesMatDim = new THREE.MeshStandardMaterial({ color: '#4a4a4d', roughness: 0.95 });
+const DIM_COLOR = new THREE.Color('#46464a');
+const WHITE = new THREE.Color(1, 1, 1);
+let booksGroup = null;
+let books = [];
+let meshes = [];
+
+function fitFont(ctx, text, maxW, size, minSize, fontFn) {
+  let s = size;
+  ctx.font = fontFn(s);
+  while (s > minSize && ctx.measureText(text).width > maxW) { s -= 1; ctx.font = fontFn(s); }
+  if (ctx.measureText(text).width <= maxW) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+  return t.trimEnd() + '…';
+}
+const serif = (s) => `600 ${s}px Georgia, "Times New Roman", serif`;
+const sans = (s) => `500 ${s}px "Helvetica Neue", Arial, sans-serif`;
+
+function wrapLines(ctx, text, maxW) {
+  const words = text.split(/\s+/);
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const t = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(t).width <= maxW || !cur) cur = t; else { lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function spineTexture(b) {
+  const PPC = CFG.PPC;
+  const tw = Math.max(14, Math.round(b.t * PPC));
+  const th = Math.round(b.h * PPC);
+  const cv = document.createElement('canvas');
+  cv.width = tw; cv.height = th;
+  const ctx = cv.getContext('2d');
+
+  ctx.fillStyle = b.color;
+  ctx.fillRect(0, 0, tw, th);
+  // zaobljenje hrpta
+  const sh = ctx.createLinearGradient(0, 0, tw, 0);
+  sh.addColorStop(0, 'rgba(0,0,0,0.28)');
+  sh.addColorStop(0.18, 'rgba(255,255,255,0.06)');
+  sh.addColorStop(0.5, 'rgba(255,255,255,0.10)');
+  sh.addColorStop(0.82, 'rgba(255,255,255,0.03)');
+  sh.addColorStop(1, 'rgba(0,0,0,0.3)');
+  ctx.fillStyle = sh;
+  ctx.fillRect(0, 0, tw, th);
+
+  const lum = luminance(b.color);
+  const ink = lum > 0.32 ? '#26221d' : (lum < 0.05 ? '#e2c27a' : '#f3ecdf');
+  const inkSoft = lum > 0.32 ? 'rgba(38,34,29,0.75)' : (lum < 0.05 ? 'rgba(226,194,122,0.8)' : 'rgba(243,236,223,0.78)');
+
+  // ukrasne linije
+  ctx.fillStyle = inkSoft;
+  const lw = Math.max(1, Math.round(PPC * 0.06));
+  for (const y of [th * 0.045, th * 0.045 + lw * 3, th * 0.94, th * 0.94 - lw * 3]) ctx.fillRect(tw * 0.08, y, tw * 0.84, lw);
+
+  const title = clean(b.naslov) || '?';
+  const author = clean(b.autor);
+  const lastName = author && author !== '?' ? author.split(/,| i /)[0].trim().split(/\s+/).pop() : '';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = ink;
+
+  const top = th * 0.075, bottom = th * 0.91;
+  const L = bottom - top;
+
+  if (b.t >= 4.2 && !b.lying) {
+    // horizontalni tekst (debeli hrbat)
+    const maxW = tw * 0.84;
+    let size = Math.round(tw * 0.17);
+    ctx.font = serif(size);
+    let lines = wrapLines(ctx, title, maxW);
+    while (size > 10 && (lines.length * size * 1.15 > L * 0.55 || lines.some((l) => ctx.measureText(l).width > maxW))) {
+      size -= 1; ctx.font = serif(size); lines = wrapLines(ctx, title, maxW);
+    }
+    const y0 = top + L * 0.18;
+    lines.forEach((l, i) => ctx.fillText(l, tw / 2, y0 + i * size * 1.15));
+    if (author && author !== '?') {
+      ctx.fillStyle = inkSoft;
+      const a = fitFont(ctx, author, maxW, Math.round(tw * 0.11), 9, sans);
+      ctx.fillText(a, tw / 2, top + L * 0.86);
+    }
+  } else {
+    // vertikalni tekst, čita se odozdo nagore
+    ctx.save();
+    ctx.translate(0, th);
+    ctx.rotate(-Math.PI / 2);
+    // sad: x ide od dna ka vrhu knjige (0..th), y preko širine hrpta (0..tw)
+    const x0 = th - bottom, x1 = th - top;
+    const twoLines = tw >= 2.1 * PPC;
+    if (twoLines && author && author !== '?') {
+      const t = fitFont(ctx, title, (x1 - x0) * 0.96, Math.round(tw * 0.3), 9, serif);
+      ctx.fillText(t, (x0 + x1) / 2, tw * 0.4);
+      ctx.fillStyle = inkSoft;
+      const a = fitFont(ctx, author, (x1 - x0) * 0.9, Math.round(tw * 0.19), 8, sans);
+      ctx.fillText(a, (x0 + x1) / 2, tw * 0.74);
+    } else {
+      const split = lastName ? 0.72 : 1;
+      const tx1 = x0 + (x1 - x0) * split;
+      const t = fitFont(ctx, title, (tx1 - x0) * 0.94, Math.round(tw * 0.5), 8, serif);
+      ctx.fillText(t, (x0 + tx1) / 2, tw * 0.53);
+      if (lastName) {
+        ctx.fillStyle = inkSoft;
+        const a = fitFont(ctx, lastName, (x1 - tx1) * 0.9, Math.round(tw * 0.36), 7, sans);
+        ctx.fillText(a, (tx1 + x1) / 2, tw * 0.53);
+      }
+    }
+    ctx.restore();
+  }
+
+  // redni broj u serijalu, pri dnu
+  const num = clean(b.broj);
+  if (b.serijal && num) {
+    ctx.fillStyle = ink;
+    ctx.font = sans(Math.max(8, Math.min(Math.round(tw * 0.42), Math.round(PPC * 0.7))));
+    ctx.fillText(num, tw / 2, th * 0.968);
+  }
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = maxAniso;
+  return tex;
+}
+
+function createBookMesh(b) {
+  const spine = new THREE.MeshStandardMaterial({ map: spineTexture(b), roughness: 0.72 });
+  const coverColor = new THREE.Color(b.color).multiplyScalar(0.85);
+  const cover = new THREE.MeshStandardMaterial({ color: coverColor, roughness: 0.7 });
+  // redosled lica BoxGeometry: +x, -x, +y, -y, +z (hrbat), -z
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.t, b.h, b.d), [cover, cover, pagesMat, pagesMat, spine, pagesMat]);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData = { book: b, spine, spineMap: spine.map, cover, coverColor, dimmed: false };
+  return mesh;
+}
+
+function layoutBooks(list) {
+  const byBox = new Map();
+  for (const b of list) {
+    if (!b.placed) continue;
+    if (!byBox.has(b.boxId)) byBox.set(b.boxId, { up: [], lying: [] });
+    byBox.get(b.boxId)[b.lying ? 'lying' : 'up'].push(b);
+  }
+  const warnings = [];
+  for (const [id, { up, lying }] of byBox) {
+    const [row, col] = id.split('-');
+    const box = boxInterior(+row, col);
+    const r = rng(hashStr(id));
+    const gap = 0.12;
+
+    // vertikalne
+    const needed = up.reduce((s, b) => s + b.t, 0) + gap * (up.length + 1);
+    const scale = needed > box.w - 0.4 ? (box.w - 0.4 - gap * (up.length + 1)) / (needed - gap * (up.length + 1)) : 1;
+    if (scale < 1) warnings.push(`${id} je prepun (${needed.toFixed(0)} / ${box.w} cm) — knjige su sabijene`);
+    let x = box.x0 + gap + (scale === 1 ? r() * 0.6 : 0);
+    const spans = []; // [x0, x1, vrh] za svaku vertikalnu knjigu
+    for (const b of up) {
+      const br = rng(b.seed ^ 0x9e3779b9);
+      const t = b.t * scale;
+      b.layout = {
+        pos: new THREE.Vector3(x + t / 2, box.y0 + b.h / 2, FRONT - 0.3 - br() * 1.4 - b.d / 2),
+        rot: new THREE.Euler(0, (br() - 0.5) * 0.02, br() < 0.3 ? (br() - 0.5) * 0.012 : 0),
+        sx: scale,
+      };
+      spans.push([x, x + t, box.y0 + b.h]);
+      x += t + gap + br() * 0.08;
+    }
+    // gomila leži na najvišoj vertikalnoj knjizi ispod sebe, inače na dnu boxa
+    const baseUnder = (x0, x1) => spans.reduce((m, [a, c, top]) => (a < x1 && c > x0 ? Math.max(m, top) : m), box.y0) + 0.05;
+
+    // horizontalne (položene na vrhu)
+    if (lying.length) {
+      const limit = box.y0 + box.h - 0.3;
+      const piles = [];
+      for (const b of lying) {
+        let pile = piles.find((p) => p.top + b.t <= limit && b.h <= p.len + 3);
+        if (!pile) {
+          const last = piles[piles.length - 1];
+          let px = last ? last.x + last.len + 1.2 : box.x0 + 0.8 + r() * 1.5;
+          // ne staje po širini: priljubi uz desnu ivicu (sme da se preklapa sa prethodnom gomilom po x)
+          if (last && px + b.h > box.x0 + box.w) px = box.x0 + box.w - b.h - 0.3;
+          if (!last || px > last.x + 8) {
+            pile = { x: px, len: b.h, top: baseUnder(px, px + b.h) };
+            piles.push(pile);
+          } else {
+            pile = piles.reduce((a, p) => (p.top < a.top ? p : a));
+            warnings.push(`${id}: nema mesta za položene knjige`);
+          }
+        }
+        pile.len = Math.max(pile.len, b.h);
+        (pile.books ||= []).push(b);
+        pile.top += b.t;
+      }
+      // gomila viša od slobodnog prostora se sabija po visini (realno: knjige su tanje/niže od procene)
+      for (const pile of piles) {
+        const base = pile.top - pile.books.reduce((s, b) => s + b.t, 0);
+        const room = limit - base;
+        const k = pile.top > limit ? Math.max(0.3, room / (pile.top - base)) : 1;
+        let y = base;
+        for (const b of pile.books) {
+          const br = rng(b.seed ^ 0x51ed27);
+          const t = b.t * k;
+          b.layout = {
+            pos: new THREE.Vector3(pile.x + b.h / 2 + (br() - 0.5) * 0.8, y + t / 2, FRONT - 0.3 - br() * 1.2 - b.d / 2),
+            rot: new THREE.Euler(0, (br() - 0.5) * 0.06, -Math.PI / 2),
+            sx: k,
+          };
+          y += t;
+        }
+      }
+    }
+  }
+  return [...new Set(warnings)];
+}
+
+function disposeGroup(g) {
+  g.traverse((o) => {
+    if (!o.isMesh) return;
+    o.geometry.dispose();
+    o.userData.spineMap?.dispose();
+    for (const m of [].concat(o.material)) {
+      if (m === pagesMat || m === pagesMatDim) continue;
+      m.map?.dispose();
+      m.dispose();
+    }
+  });
+}
+
+function buildBooks(list) {
+  if (booksGroup) { scene.remove(booksGroup); disposeGroup(booksGroup); }
+  booksGroup = new THREE.Group();
+  meshes = [];
+  const warnings = layoutBooks(list);
+  for (const b of list) {
+    if (!b.placed || !b.layout) continue;
+    const mesh = createBookMesh(b);
+    mesh.position.copy(b.layout.pos);
+    mesh.rotation.copy(b.layout.rot);
+    mesh.scale.x = b.layout.sx;
+    mesh.userData.home = b.layout.pos.clone();
+    booksGroup.add(mesh);
+    meshes.push(mesh);
+    b.mesh = mesh;
+  }
+  scene.add(booksGroup);
+  return warnings;
+}
+
+/* ============================================================
+   Kamera
+   ============================================================ */
+function homeView() {
+  const fov = THREE.MathUtils.degToRad(camera.fov);
+  const narrow = window.innerWidth < 720;
+  const needH = TOTAL_H * (narrow ? 1.12 : 1.18);
+  const needW = TOTAL_W * 1.08;
+  const dist = Math.max(needH / 2 / Math.tan(fov / 2), needW / 2 / (Math.tan(fov / 2) * camera.aspect));
+  const target = CENTER.clone().add(new THREE.Vector3(0, narrow ? 8 : 4, 0));
+  const pos = target.clone().add(new THREE.Vector3(dist * 0.12, dist * 0.06, D / 2 + dist));
+  return { pos, target };
+}
+let camAnim = null;
+function resetCamera(instant = false) {
+  const { pos, target } = homeView();
+  if (instant) {
+    camera.position.copy(pos);
+    controls.target.copy(target);
+    controls.update();
+    requestRender();
+    return;
+  }
+  camAnim = { t0: performance.now(), dur: 700, fromP: camera.position.clone(), fromT: controls.target.clone(), pos, target };
+}
+
+/* ============================================================
+   Render petlja (crta samo kad treba)
+   ============================================================ */
+let dirty = true;
+function requestRender() { dirty = true; }
+// odmah iscrtaj (ne čekaj sledeći frejm — npr. posle učitavanja ili promene boja)
+function renderNow() { renderer.render(scene, camera); dirty = false; }
+controls.addEventListener('change', requestRender);
+const moving = new Set();
+
+/* Tastatura: strelice pomeraju kameru (dok se drže), +/- zum, Shift = brže */
+const keys = new Set();
+let shiftHeld = false;
+const KEY_DIRS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
+const ZOOM_KEYS = { '+': -1, '=': -1, '-': 1, '_': 1 };
+const isTyping = (e) => e.target.closest?.('input, textarea, [contenteditable]');
+window.addEventListener('keydown', (e) => {
+  shiftHeld = e.shiftKey;
+  if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (KEY_DIRS[e.key] || e.key in ZOOM_KEYS) {
+    e.preventDefault();
+    keys.add(e.key);
+    camAnim = null;
+    requestRender();
+  }
+});
+window.addEventListener('keyup', (e) => { shiftHeld = e.shiftKey; keys.delete(e.key); });
+window.addEventListener('blur', () => keys.clear());
+
+const _right = new THREE.Vector3(), _up = new THREE.Vector3(), _move = new THREE.Vector3(), _off = new THREE.Vector3();
+const clamp = THREE.MathUtils.clamp;
+function keyboardStep(dt) {
+  if (!keys.size) return false;
+  const dist = camera.position.distanceTo(controls.target);
+  const speed = dist * (shiftHeld ? 0.75 : 0.3) * dt;
+  let dx = 0, dy = 0, zoom = 0;
+  for (const k of keys) {
+    if (KEY_DIRS[k]) { dx += KEY_DIRS[k][0]; dy += KEY_DIRS[k][1]; } else zoom += ZOOM_KEYS[k] || 0;
+  }
+  _right.setFromMatrixColumn(camera.matrix, 0);
+  _up.setFromMatrixColumn(camera.matrix, 1);
+  _move.copy(_right).multiplyScalar(dx * speed).addScaledVector(_up, dy * speed);
+  // cilj kamere ostaje u okviru police
+  const t = controls.target.clone().add(_move);
+  t.set(clamp(t.x, -TOTAL_W / 2, TOTAL_W / 2), clamp(t.y, 0, TOTAL_H), clamp(t.z, -D / 2, D / 2));
+  _move.subVectors(t, controls.target);
+  controls.target.add(_move);
+  camera.position.add(_move);
+  if (zoom) {
+    _off.subVectors(camera.position, controls.target);
+    _off.setLength(clamp(dist * Math.exp(zoom * dt * (shiftHeld ? 2.2 : 1.2)), controls.minDistance, controls.maxDistance));
+    camera.position.copy(controls.target).add(_off);
+  }
+  return true;
+}
+
+let lastNow = performance.now();
+function tick(now) {
+  requestAnimationFrame(tick);
+  const dt = Math.min(0.05, (now - lastNow) / 1000);
+  lastNow = now;
+  let active = keyboardStep(dt);
+  if (camAnim) {
+    const k = Math.min(1, (now - camAnim.t0) / camAnim.dur);
+    const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    camera.position.lerpVectors(camAnim.fromP, camAnim.pos, e);
+    controls.target.lerpVectors(camAnim.fromT, camAnim.target, e);
+    if (k >= 1) camAnim = null;
+    active = true;
+  }
+  for (const m of moving) {
+    const target = m.userData.home.z + (m === selected ? 9 : 0);
+    m.position.z += (target - m.position.z) * 0.18;
+    if (Math.abs(target - m.position.z) < 0.02) { m.position.z = target; moving.delete(m); }
+    active = true;
+  }
+  const changed = controls.update();
+  if (changed || active || dirty) {
+    renderer.render(scene, camera);
+    dirty = false;
+  }
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  requestRender();
+});
+
+/* ============================================================
+   Selekcija i kartica
+   ============================================================ */
+let selected = null;
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let down = null;
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  down = { x: e.clientX, y: e.clientY, t: performance.now() };
+});
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (!down) return;
+  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
+  const quick = performance.now() - down.t < 600;
+  down = null;
+  if (moved > 6 || !quick) return;
+  closePanels();
+  pointer.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects(meshes, false)[0];
+  if (hit) selectBook(hit.object.userData.book);
+  else selectBook(null);
+});
+
+function selectBook(b) {
+  const prev = selected;
+  selected = b && b.mesh ? b.mesh : null;
+  if (prev && prev !== selected) moving.add(prev);
+  if (selected) moving.add(selected);
+  if (b) showCard(b); else $('card').classList.add('hidden');
+  requestRender();
+}
+
+function field(label, value, extra = '') {
+  const v = value === '' || value == null ? '—' : value;
+  const q = isUnsure(String(value)) ? ' class="q"' : '';
+  return `<dt>${label}</dt><dd${q}>${esc(v)}${extra}</dd>`;
+}
+function showCard(b) {
+  const owner = OWNER_LABEL[b.ciji] || b.ciji;
+  const read = b.procitano === 'da' ? 'da' : b.procitano === 'ne' ? 'ne' : '';
+  let boxText = b.box;
+  if (b.placed) boxText = `${b.boxId}${b.lying ? ' · položena na vrhu' : ''}`;
+  const html = `
+    <h2${isUnsure(b.naslov) ? ' class="q"' : ''}><span class="swatch" style="background:${esc(b.color)}"></span>${esc(b.naslov || '?')}</h2>
+    <div class="author${isUnsure(b.autor) ? ' q' : ''}">${esc(b.autor || '?')}</div>
+    <dl>
+      ${b.serijal ? field('Serijal', b.serijal + (b.broj ? ` · #${b.broj}` : '')) : ''}
+      ${field('Žanr', genreLabel(b.zanr))}
+      ${field('Čija', owner)}
+      ${field('Pročitano', read)}
+      ${b.placed ? field('Box', boxText) : `<dt>Box</dt><dd class="q">${esc(b.boxNote)}</dd>`}
+      ${field('Strana', b.str)}
+      ${b.boja ? field('Boja hrpta', b.boja) : ''}
+    </dl>`;
+  $('cardBody').innerHTML = html;
+  $('card').classList.remove('hidden');
+}
+$('cardClose').addEventListener('click', () => selectBook(null));
+
+/* ============================================================
+   Filteri i pretraga
+   ============================================================ */
+const state = { q: '', genres: new Set(), owner: 'sve', read: 'sve' };
+
+function passes(b) {
+  if (state.genres.size && !state.genres.has(b.zanr)) return false;
+  if (state.owner !== 'sve' && b.ciji !== state.owner && b.ciji !== 'oba') return false;
+  if (state.read === 'da' && b.procitano !== 'da') return false;
+  if (state.read === 'ne' && b.procitano !== 'ne') return false;
+  if (state.read === 'nep' && (b.procitano === 'da' || b.procitano === 'ne')) return false;
+  if (state.q && !b.searchText.includes(state.q)) return false;
+  return true;
+}
+function setDim(mesh, dim) {
+  const u = mesh.userData;
+  if (u.dimmed === dim) return;
+  u.dimmed = dim;
+  // zatamnjene: neutralno sivo, bez boje i teksta — da odskoče i tamni hrptovi
+  u.spine.map = dim ? null : u.spineMap;
+  u.spine.color.copy(dim ? DIM_COLOR : WHITE);
+  u.spine.needsUpdate = true;
+  u.cover.color.copy(dim ? DIM_COLOR : u.coverColor);
+  const mats = mesh.material;
+  mats[2] = mats[3] = mats[5] = dim ? pagesMatDim : pagesMat;
+}
+function applyFilters() {
+  let shown = 0;
+  for (const b of books) {
+    const ok = passes(b);
+    if (ok) shown++;
+    if (b.mesh) setDim(b.mesh, !ok);
+    if (b.li) b.li.classList.toggle('dim', !ok);
+  }
+  const active = state.q || state.genres.size || state.owner !== 'sve' || state.read !== 'sve';
+  $('stats').textContent = active ? `${shown}/${books.length}` : `${books.length}`;
+  const nf = state.genres.size + (state.owner !== 'sve') + (state.read !== 'sve');
+  $('filterBadge').textContent = nf;
+  $('filterBadge').classList.toggle('hidden', !nf);
+  $('genreClear').classList.toggle('hidden', !state.genres.size);
+  requestRender();
+}
+
+function buildGenreChips() {
+  const counts = new Map();
+  for (const b of books) if (b.zanr) counts.set(b.zanr, (counts.get(b.zanr) || 0) + 1);
+  for (const g of [...state.genres]) if (!counts.has(g)) state.genres.delete(g);
+  const box = $('genreChips');
+  box.innerHTML = '';
+  [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'sr')).forEach(([g, n]) => {
+    const el = document.createElement('button');
+    el.className = 'chip';
+    el.setAttribute('aria-pressed', state.genres.has(g));
+    el.innerHTML = `<i style="background:${(GENRE_PALETTE[g] || DEFAULT_PALETTE)[0]}"></i>${esc(genreLabel(g))}<span>${n}</span>`;
+    el.addEventListener('click', () => {
+      state.genres.has(g) ? state.genres.delete(g) : state.genres.add(g);
+      el.setAttribute('aria-pressed', state.genres.has(g));
+      applyFilters();
+    });
+    box.appendChild(el);
+  });
+}
+$('genreClear').addEventListener('click', () => {
+  state.genres.clear();
+  $('genreChips').querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', 'false'));
+  applyFilters();
+});
+document.querySelectorAll('.seg').forEach((seg) => {
+  seg.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    state[seg.dataset.filter] = btn.dataset.v;
+    seg.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === btn));
+    applyFilters();
+  });
+});
+$('search').addEventListener('input', (e) => {
+  state.q = norm(e.target.value.trim());
+  $('searchClear').classList.toggle('hidden', !e.target.value);
+  applyFilters();
+});
+$('searchClear').addEventListener('click', (e) => {
+  e.preventDefault();
+  $('search').value = '';
+  state.q = '';
+  $('searchClear').classList.add('hidden');
+  applyFilters();
+});
+
+/* Nesmeštene */
+function buildUnplaced() {
+  const list = books.filter((b) => !b.placed);
+  $('btnUnplaced').classList.toggle('hidden', !list.length);
+  if (!list.length) $('unplaced').classList.add('hidden');
+  const ul = $('unplacedList');
+  ul.innerHTML = list.length ? '' : '<li class="empty" style="cursor:default">Sve knjige su smeštene.</li>';
+  for (const b of list) {
+    const li = document.createElement('li');
+    li.innerHTML = `<div class="t">${esc(b.naslov || '?')}</div><div class="a">${esc(b.autor || '?')} · ${esc(genreLabel(b.zanr) || '—')}</div>` +
+      (b.box ? `<div class="n">${esc(b.boxNote)}</div>` : '');
+    li.addEventListener('click', () => selectBook(b));
+    b.li = li;
+    ul.appendChild(li);
+  }
+}
+
+/* Paneli */
+function closePanels() {
+  for (const [p, bt] of [['filters', 'btnFilters'], ['unplaced', 'btnUnplaced']]) { // + ['more', 'btnMore'] kad se vrate palete
+    $(p).classList.add('hidden');
+    $(bt).setAttribute('aria-pressed', 'false');
+  }
+}
+function togglePanel(id, btnId) {
+  const panel = $(id);
+  const open = panel.classList.contains('hidden');
+  closePanels();
+  if (open) { panel.classList.remove('hidden'); $(btnId).setAttribute('aria-pressed', 'true'); }
+}
+$('btnFilters').addEventListener('click', () => togglePanel('filters', 'btnFilters'));
+$('btnUnplaced').addEventListener('click', () => togglePanel('unplaced', 'btnUnplaced'));
+$('btnReset').addEventListener('click', () => resetCamera());
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { selectBook(null); closePanels(); }
+});
+
+/* ============================================================
+   Toast
+   ============================================================ */
+let toastTimer;
+function toast(msg, ms = 5000) {
+  const el = $('toast');
+  el.innerHTML = msg;
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), ms);
+}
+
+/* ============================================================
+   Uvoz
+   ============================================================ */
+let currentMd = '';
+function showImport(cancelable) {
+  $('mdInput').value = currentMd || store.get() || '';
+  $('btnImportCancel').classList.toggle('hidden', !cancelable);
+  $('btnCopyLink').classList.toggle('hidden', !$('mdInput').value);
+  $('import').classList.remove('hidden');
+}
+// ISKLJUČENO — izbor boja (vidi komentar u CSS-u). ⋯ sada direktno otvara Podaci.
+// $('btnData').addEventListener('click', () => { closePanels(); showImport(!!books.length); });
+//
+// /* Palete boja */
+// const PALETTES = [
+//   { id: '', name: 'Breskva', sw: ['#ffdccc', '#fff9ec', '#fb6376'] },
+//   { id: 'porcelan', name: 'Porcelan', sw: ['#fdf5f4', '#f9c4ba', '#034c5f'] },
+//   { id: 'rumen', name: 'Rumen', sw: ['#f9c4ba', '#fdf5f4', '#034c5f'] },
+//   { id: 'magla', name: 'Magla', sw: ['#97bec6', '#fdf5f4', '#ee6457'] },
+//   { id: 'dubina', name: 'Dubina', sw: ['#034c5f', '#fdf5f4', '#ee6457'] },
+//   { id: 'koral', name: 'Koral', sw: ['#ee6457', '#fdf5f4', '#034c5f'] },
+//   { id: 'sunce', name: 'Sunce', sw: ['#ffcb77', '#fef9ef', '#227c9d'] },
+// ];
+// const PALETTE_KEY = 'biblioteka.paleta';
+// function setPalette(id) {
+//   if (id) document.documentElement.dataset.palette = id;
+//   else delete document.documentElement.dataset.palette;
+//   try { localStorage.setItem(PALETTE_KEY, id); } catch { /* privatni režim */ }
+//   $('palettes').querySelectorAll('.pal').forEach((b) => b.setAttribute('aria-pressed', b.dataset.id === id));
+//   applyTheme();
+// }
+// for (const p of PALETTES) {
+//   const el = document.createElement('button');
+//   el.className = 'pal';
+//   el.dataset.id = p.id;
+//   el.innerHTML = `<span class="sw">${p.sw.map((c) => `<i style="background:${c}"></i>`).join('')}</span>${esc(p.name)}`;
+//   el.addEventListener('click', () => setPalette(p.id));
+//   $('palettes').appendChild(el);
+// }
+$('btnMore').addEventListener('click', () => { closePanels(); showImport(!!books.length); });
+$('btnImportCancel').addEventListener('click', () => $('import').classList.add('hidden'));
+$('mdInput').addEventListener('input', () => $('btnCopyLink').classList.toggle('hidden', !$('mdInput').value));
+$('btnImport').addEventListener('click', () => {
+  const md = $('mdInput').value;
+  if (!load(md)) return;
+  history.replaceState(null, '', '#' + encodeBase64(md));
+  $('import').classList.add('hidden');
+});
+$('btnCopyLink').addEventListener('click', async () => {
+  const url = location.origin + location.pathname + '#' + encodeBase64($('mdInput').value);
+  try { await navigator.clipboard.writeText(url); toast('Link je kopiran.'); }
+  catch { prompt('Kopiraj link:', url); }
+});
+
+function load(md) {
+  const list = parseMd(md || '');
+  if (!list.length) {
+    toast('Nisam našao nijedan red tabele. Proveri da li je zaglavlje <code>| Autor | Naslov | …</code>.');
+    return false;
+  }
+  currentMd = md;
+  store.set(md);
+  books = list;
+  selectBook(null);
+  const warnings = buildBooks(books);
+  buildGenreChips();
+  buildUnplaced();
+  applyFilters();
+  $('topbar').classList.remove('hidden');
+  const invalid = books.filter((b) => b.box && !b.placed).length;
+  if (invalid) warnings.unshift(`${invalid} knjiga sa nevažećim Box-om — vidi „Nesmeštene"`);
+  // popunjenost zavisi od pretpostavljene širine boxa (CFG.BOX_W) — za sad samo u konzoli
+  if (warnings.length) console.warn(warnings.join('\n'));
+  if (invalid) toast(esc(warnings[0]), 8000);
+  renderNow();
+  return true;
+}
+
+function loadFromHash() {
+  const h = location.hash.slice(1);
+  if (!h) return false;
+  try {
+    return load(decodeHash(h));
+  } catch (err) {
+    console.error(err);
+    toast('Podaci u adresi (#…) nisu ispravan Base64.');
+    return false;
+  }
+}
+window.addEventListener('hashchange', () => { if (loadFromHash()) $('import').classList.add('hidden'); });
+
+/* ============================================================
+   Start
+   ============================================================ */
+// ISKLJUČENO — učitavanje sačuvane palete:
+// let savedPalette = '';
+// try { savedPalette = localStorage.getItem(PALETTE_KEY) || ''; } catch { /* privatni režim */ }
+// setPalette(PALETTES.some((p) => p.id === savedPalette) ? savedPalette : '');
+applyTheme();
+resetCamera(true);
+$('loading').remove();
+if (!loadFromHash()) showImport(false);
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
